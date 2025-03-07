@@ -205,13 +205,6 @@ def read_data():
         pressAdjVoltage = pv - TRANSDUCERMINVOLTAGE
         pressure = pressAdjVoltage * TRANSDUCERSCALINGFACTOR
         pressures.append(pressure)
-       
- feature_Freak-42
-    n_samples = min(len(loads), len(pressures))
-    sample_rate = data['sample_rate']
-
-    for i in range(n_samples):
-        time.append(round((i + 1) * (1 / sample_rate), 3))
 
     # REMOVE IF WE MOVE FORWARD WITH TIMESTAMPING LOGIC INSTEAD OF FREQ
     # Until we have a better input file format, this is the best way to get the number of samples taken
@@ -220,14 +213,14 @@ def read_data():
     # n_samples = min(n_ld_samples, n_press_samples) # OR take max()
     # sample_rate = data['sample_rate']
 
-    for ts in data['time_stamps']:
+    for ts in data['time_values_seconds']:
        time.append(ts)
 
     # REMOVE IF WE MOVE FORWARD WITH TIMESTAMPING LOGIC INSTEAD OF FREQ
     # Gets time array to "sync" data entries to graphs dependent on sampling rate and samples relative to a second
     # for i in range(n_samples):
     #     time.append( round( (float) ((i+1) * (float) (1/sample_rate)), 3) )
- dev
+ 
 
     return (time, loads, pressures)
 
