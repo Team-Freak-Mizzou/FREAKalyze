@@ -62,7 +62,7 @@ def populate_graphs_interval_callback():
     max_index = 0
     for i, t in enumerate(time):
         if (t <= time_min): min_index = i
-        if (t >= time_max): max_index = i
+        if (t <= time_max): max_index = i
 
     # Copy everything within the interval to trimmed lists
     for i in range(min_index, max_index):
