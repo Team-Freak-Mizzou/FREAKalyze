@@ -27,6 +27,17 @@ def populate_graphs_callback():
     """
 
     time, thrusts, pressures = read_data()
+
+    # Starting points for sliders, put them 5% inwards on each side
+    slider_min = time[ (int) ( ( len(time) ) * .05 ) ]
+    slider_max = time[ (int) ( ( len(time) ) * .95 ) ]
+
+    # Update sliding interval lines
+    dpg.set_value("min_line_thrust", slider_min)
+    dpg.set_value("max_line_thrust", slider_max)
+    dpg.set_value("min_line_pressure", slider_min)
+    dpg.set_value("max_line_pressure", slider_max)
+    
     populate_graphs(time, thrusts, pressures)
 
 
@@ -69,13 +80,8 @@ def populate_graphs(time, thrusts, pressures):
     # Calculate key stats/motor characteristics
     if time:
         burn_time = time[-1]
-        # Starting points for sliders, put them 5% inwards on each side
-        slider_min = time[ (int) ( ( len(time) ) * .05 ) ]
-        slider_max = time[ (int) ( ( len(time) ) * .95 ) ]
     else:
         burn_time = 0.0
-        slider_min = 0.0
-        slider_max = 0.0
 
     if thrusts:
         avg_thrust = sum(thrusts) / len(thrusts)
@@ -118,12 +124,6 @@ def populate_graphs(time, thrusts, pressures):
     dpg.fit_axis_data("y_axis_pressure")
     dpg.fit_axis_data("x_axis_thrust")
     dpg.fit_axis_data("x_axis_pressure")
-
-    # Update sliding interval lines
-    dpg.set_value("min_line_thrust", slider_min)
-    dpg.set_value("max_line_thrust", slider_max)
-    dpg.set_value("min_line_pressure", slider_min)
-    dpg.set_value("max_line_pressure", slider_max)
 
     # Show the video path in the UI
     dpg.set_value("video_path_label", f"Video Path: {video_file_path}")
@@ -206,7 +206,7 @@ def build_ui():
                 dpg.add_drag_line(label="max", color=[255, 0, 0, 255],  tag="max_line_pressure", callback=pressure_line_callback)
 
         dpg.add_button(label="Restore graphs", callback=populate_graphs_callback)
-        dpg.add_button(label="Graph selected interval", callback=populate_graphs_interval_callback)
+        dpg.add_button(label="Graph/Calculate for selected interval", callback=populate_graphs_interval_callback)
         
         # Key stats section
         with dpg.child_window(width=-1, height=180):
