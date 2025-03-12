@@ -14,14 +14,69 @@ file_path = ''
 # Global variable to hold the video file path
 video_file_path = ''
 
+#========================================================================#
+# CALLBACKS
+#========================================================================#
+
+
 def populate_graphs_callback():
     """
-    Called when the user clicks 'Populate Graphs and Load Camera Feed'.
+    Called when the user clicks 'Populate Graphs and Load Camera Feed' OR 'Restore graphs'.
     Parses the JSON file (selected at startup) and populates the plots with the computed data.
     Also displays the video path (the video won't actually play until unpaused).
     """
+
     time, thrusts, pressures = read_data()
 
+    # Starting points for sliders, put them 5% inwards on each side
+    slider_min = time[ (int) ( ( len(time) ) * .05 ) ]
+    slider_max = time[ (int) ( ( len(time) ) * .95 ) ]
+
+    # Update sliding interval lines
+    dpg.set_value("min_line_thrust", slider_min)
+    dpg.set_value("max_line_thrust", slider_max)
+    dpg.set_value("min_line_pressure", slider_min)
+    dpg.set_value("max_line_pressure", slider_max)
+    
+    populate_graphs(time, thrusts, pressures)
+
+
+def populate_graphs_interval_callback():
+    """
+    Called when the user clicks 'Graph selected interval".
+    Parses the JSON file (selected at startup) and populates the plots with the computed data.
+    plots will be narrowed to the data only existing within the specified interval of the JSON file.
+    Also display the video path
+    """
+
+    trimmed_time = []
+    trimmed_thrusts = []
+    trimmed_pressures = []
+
+    time, thrusts, pressures = read_data()
+
+    time_min = dpg.get_value("min_line_thrust")
+    time_max = dpg.get_value("max_line_thrust")
+
+    min_index = 0
+    max_index = 0
+    for i, t in enumerate(time):
+        if (t <= time_min): min_index = i
+        if (t <= time_max): max_index = i
+
+    # Copy everything within the interval to trimmed lists
+    for i in range(min_index, max_index):
+      trimmed_time.append(time[i])
+      trimmed_thrusts.append(thrusts[i])
+      trimmed_pressures.append(pressures[i])
+        
+    populate_graphs(trimmed_time, trimmed_thrusts, trimmed_pressures)
+
+
+def populate_graphs(time, thrusts, pressures):
+    """
+    Callback helper function for graph population callbacks
+    """
     # Calculate key stats/motor characteristics
     if time:
         burn_time = time[-1]
@@ -74,6 +129,28 @@ def populate_graphs_callback():
     dpg.set_value("video_path_label", f"Video Path: {video_file_path}")
 
 
+def thrust_line_callback():
+    """
+    Called when the user updates the graph interval for thrust.
+    """
+    min = dpg.get_value("min_line_thrust")
+    max = dpg.get_value("max_line_thrust")
+
+    dpg.set_value("min_line_pressure", min)
+    dpg.set_value("max_line_pressure", max)
+
+
+def pressure_line_callback():
+    """
+    Called when the user updates the graph interval for pressure.
+    """
+    min = dpg.get_value("min_line_pressure")
+    max = dpg.get_value("max_line_pressure")
+
+    dpg.set_value("min_line_thrust", min)
+    dpg.set_value("max_line_thrust", max)
+
+
 def exit_callback():
     """
     Closes the application.
@@ -97,6 +174,11 @@ def resize_callback(sender, app_data, user_data):
         dpg.set_item_width("pressure_plot", width * 0.68)
 
 
+#========================================================================#
+# Application functions
+#========================================================================#
+
+
 def build_ui():
     """
     Builds the main UI layout.
@@ -112,11 +194,19 @@ def build_ui():
                 dpg.add_plot_axis(dpg.mvXAxis, label="Time (s)", tag="x_axis_thrust")
                 with dpg.plot_axis(dpg.mvYAxis, label="Thrust (N)", tag="y_axis_thrust"):
                     dpg.add_line_series([], [], label="Thrust Data", tag="thrust_series")
+                dpg.add_drag_line(label="min", color=[0, 255, 0, 255], tag="min_line_thrust", callback=thrust_line_callback)
+                dpg.add_drag_line(label="max", color=[255, 0, 0, 255],  tag="max_line_thrust", callback=thrust_line_callback)
+
             # Pressure Plot
             with dpg.plot(label="Pressure Data", height=160, width=-1, tag="pressure_plot"):
                 dpg.add_plot_axis(dpg.mvXAxis, label="Time (s)", tag="x_axis_pressure")
                 with dpg.plot_axis(dpg.mvYAxis, label="Pressure (PSI)", tag="y_axis_pressure"):
                     dpg.add_line_series([], [], label="Pressure Data", tag="pressure_series")
+                dpg.add_drag_line(label="min", color=[0, 255, 0, 255], tag="min_line_pressure", callback=pressure_line_callback)
+                dpg.add_drag_line(label="max", color=[255, 0, 0, 255],  tag="max_line_pressure", callback=pressure_line_callback)
+
+        dpg.add_button(label="Restore graphs", callback=populate_graphs_callback)
+        dpg.add_button(label="Graph/Calculate for selected interval", callback=populate_graphs_interval_callback)
         
         # Key stats section
         with dpg.child_window(width=-1, height=180):
@@ -206,21 +296,8 @@ def read_data():
         pressure = pressAdjVoltage * TRANSDUCERSCALINGFACTOR
         pressures.append(pressure)
 
-    # REMOVE IF WE MOVE FORWARD WITH TIMESTAMPING LOGIC INSTEAD OF FREQ
-    # Until we have a better input file format, this is the best way to get the number of samples taken
-    # n_press_samples = len(pressures)
-    # n_ld_samples = len(loads)
-    # n_samples = min(n_ld_samples, n_press_samples) # OR take max()
-    # sample_rate = data['sample_rate']
-
     for ts in data['time_values_seconds']:
        time.append(ts)
-
-    # REMOVE IF WE MOVE FORWARD WITH TIMESTAMPING LOGIC INSTEAD OF FREQ
-    # Gets time array to "sync" data entries to graphs dependent on sampling rate and samples relative to a second
-    # for i in range(n_samples):
-    #     time.append( round( (float) ((i+1) * (float) (1/sample_rate)), 3) )
- 
 
     return (time, loads, pressures)
 
