@@ -11,7 +11,9 @@ A repository will be instantiated in a folder named FREAKalyze.
 The next step is to create a Python virtual environment so that the project modules may be located by the interpreter. 
 Inside the folder that contains FREAKalyze, enter `python -m venv FREAKalyze`. 
 
-To activate, navigate into the folder FREAKalyze and for Windows, enter `./Scripts/activate`. For Mac and Unix, enter `source bin/activate`.
+To activate your virtual environment, navigate into the folder FREAKalyze and for Windows, enter `./Scripts/activate`. For Mac and Unix, enter `source bin/activate`.
+
+Next, install required Python modules by entering `pip install -r requirements.txt`.
 
 ## How to run FREAKalyze
 
