@@ -347,10 +347,11 @@ def build_ui():
                 dpg.add_drag_line(label="min", color=[0, 255, 0, 255], tag="min_line_pressure", callback=pressure_line_callback)
                 dpg.add_drag_line(label="max", color=[255, 0, 0, 255],  tag="max_line_pressure", callback=pressure_line_callback)
 
-        dpg.add_button(label="Restore graphs/interval", callback=populate_graphs_callback)
-        dpg.add_button(label="Graph/Calculate for selected interval", callback=populate_interval_window_callback)
+        dpg.add_button(label="Restore graphs", callback=populate_graphs_callback)
+        dpg.add_button(label="Calculate characteristics for selected interval", callback=populate_interval_window_callback)
         
         # Key stats base data section
+        dpg.add_text("Overall dataset characteristics", color=(255, 140, 0))
         with dpg.child_window(width=-1, height=180):
             dpg.add_text(" Average Thrust:  N", tag="avg_thrust", color=(0, 255, 255))
             dpg.add_text(" Max Thrust:  N", tag="max_thrust", color=(255, 200, 200))
@@ -361,6 +362,7 @@ def build_ui():
             dpg.add_text(" Motor Designation: ", tag="motor_desig", color=(100, 200, 255))
 
         # Key stats interval section
+        dpg.add_text("Interval-specific dataset characteristics", color=(255, 140, 0))
         with dpg.child_window(width=-1, height=180):
             dpg.add_text(" Average Thrust:  N", tag="avg_thrust_interval", color=(0, 255, 255))
             dpg.add_text(" Max Thrust:  N", tag="max_thrust_interval", color=(255, 200, 200))
