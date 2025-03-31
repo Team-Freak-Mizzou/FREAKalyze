@@ -56,11 +56,11 @@ def populate_graphs_callback():
     populate_graphs(time, thrusts, pressures)
 
 
-def populate_graphs_interval_callback():
+def populate_interval_window_callback():
     """
     Called when the user clicks 'Graph selected interval".
     Parses the JSON file (selected at startup) and populates the plots with the computed data.
-    plots will be narrowed to the data only existing within the specified interval of the JSON file.
+    Data will be narrowed to the data only existing within the specified interval of the JSON file.
     Also display the video path
     """
 
@@ -86,7 +86,7 @@ def populate_graphs_interval_callback():
       trimmed_thrusts.append(thrusts[i])
       trimmed_pressures.append(pressures[i])
         
-    populate_graphs(trimmed_time, trimmed_thrusts, trimmed_pressures)
+    populate_interval_window(trimmed_time, trimmed_thrusts, trimmed_pressures)
 
 def populate_graphs(time, thrusts, pressures):
     """
@@ -142,6 +142,53 @@ def populate_graphs(time, thrusts, pressures):
 
     # Show the video path in the UI
     dpg.set_value("video_path_label", f"Video Path: {video_file_path}")
+
+def populate_interval_window(time, thrusts, pressures):
+    """
+    Callback to populate the interval selection window with interval values
+    """
+    # Calculate key stats/motor characteristics
+    if time:
+        burn_time = time[-1]
+    else:
+        burn_time = 0.0
+
+    if thrusts:
+        avg_thrust = sum(thrusts) / len(thrusts)
+        max_thrust = max(thrusts)
+    else:
+        avg_thrust = 0.0
+        max_thrust = 0.0
+
+    if pressures:
+        avg_pressure = sum(pressures) / len(pressures)
+        max_pressure = max(pressures)
+    else:
+        avg_pressure = 0.0
+        max_pressure = 0.0
+
+    if thrusts:
+        total_impulse = integrate.simpson(thrusts, x=time)
+    else:
+        total_impulse = 0.0
+
+    motor_class = determine_motor_class(total_impulse)
+
+    # Update plot series, uncomment to scope graphs to interval window
+    # dpg.set_item_label("thrust_series", "Thrust Data")
+    # dpg.set_item_label("pressure_series", "Pressure Data")
+    # dpg.set_value("thrust_series", [time, thrusts])
+    # dpg.set_value("pressure_series", [time, pressures])
+    
+    # Update key stats labels
+    dpg.set_value("avg_thrust_interval", " Average Thrust: " + '{0:,.2f}'.format(avg_thrust) + " N")
+    dpg.set_value("max_thrust_interval", " Max Thrust: " + '{0:,.2f}'.format(max_thrust) + " N")
+    dpg.set_value("avg_pressure_interval", " Average Pressure: " + '{0:,.2f}'.format(avg_pressure) + " PSI")
+    dpg.set_value("max_pressure_interval", " Max Pressure: " + '{0:,.2f}'.format(max_pressure) + " PSI")
+    dpg.set_value("burn_time_interval", " Burn Time: " + '{0:.2f}'.format(burn_time) + " s")
+    dpg.set_value("total_impulse_interval", " Total Impulse: " + '{0:.2f}'.format(total_impulse) + " Ns")
+    dpg.set_value("motor_desig_interval", " Motor Designation: " + motor_class + '{0:.0f}'.format(avg_thrust))
+
 
 
 def thrust_line_callback():
@@ -301,9 +348,10 @@ def build_ui():
                 dpg.add_drag_line(label="max", color=[255, 0, 0, 255],  tag="max_line_pressure", callback=pressure_line_callback)
 
         dpg.add_button(label="Restore graphs", callback=populate_graphs_callback)
-        dpg.add_button(label="Graph/Calculate for selected interval", callback=populate_graphs_interval_callback)
+        dpg.add_button(label="Calculate characteristics for selected interval", callback=populate_interval_window_callback)
         
-        # Key stats section
+        # Key stats base data section
+        dpg.add_text("Overall dataset characteristics", color=(255, 140, 0))
         with dpg.child_window(width=-1, height=180):
             dpg.add_text(" Average Thrust:  N", tag="avg_thrust", color=(0, 255, 255))
             dpg.add_text(" Max Thrust:  N", tag="max_thrust", color=(255, 200, 200))
@@ -312,6 +360,17 @@ def build_ui():
             dpg.add_text(" Burn Time:  s", tag="burn_time", color=(255, 165, 0))
             dpg.add_text(" Total Impulse:  Ns", tag="total_impulse", color=(255, 105, 180))
             dpg.add_text(" Motor Designation: ", tag="motor_desig", color=(100, 200, 255))
+
+        # Key stats interval section
+        dpg.add_text("Interval-specific dataset characteristics", color=(255, 140, 0))
+        with dpg.child_window(width=-1, height=180):
+            dpg.add_text(" Average Thrust:  N", tag="avg_thrust_interval", color=(0, 255, 255))
+            dpg.add_text(" Max Thrust:  N", tag="max_thrust_interval", color=(255, 200, 200))
+            dpg.add_text(" Average Pressure:  PSI", tag="avg_pressure_interval", color=(200, 255, 200))
+            dpg.add_text(" Max Pressure:  PSI", tag="max_pressure_interval", color=(255, 255, 0))
+            dpg.add_text(" Burn Time:  s", tag="burn_time_interval", color=(255, 165, 0))
+            dpg.add_text(" Total Impulse:  Ns", tag="total_impulse_interval", color=(255, 105, 180))
+            dpg.add_text(" Motor Designation: ", tag="motor_desig_interval", color=(100, 200, 255))
         
         dpg.add_spacer(height=10)
         dpg.add_separator()
