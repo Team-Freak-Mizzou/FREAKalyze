@@ -201,6 +201,9 @@ def thrust_line_callback():
     dpg.set_value("min_line_pressure", min)
     dpg.set_value("max_line_pressure", max)
 
+    # Update interval stats
+    populate_interval_window_callback()
+
 
 def pressure_line_callback():
     """
@@ -211,6 +214,10 @@ def pressure_line_callback():
 
     dpg.set_value("min_line_thrust", min)
     dpg.set_value("max_line_thrust", max)
+
+    # Update interval stats
+    populate_interval_window_callback()
+
 
 def exit_callback():
     global video_playing, video_capture
@@ -348,7 +355,6 @@ def build_ui():
                 dpg.add_drag_line(label="max", color=[255, 0, 0, 255],  tag="max_line_pressure", callback=pressure_line_callback)
 
         dpg.add_button(label="Restore graphs", callback=populate_graphs_callback)
-        dpg.add_button(label="Calculate characteristics for selected interval", callback=populate_interval_window_callback)
         
         # Key stats base data section
         dpg.add_text("Overall dataset characteristics", color=(255, 140, 0))
