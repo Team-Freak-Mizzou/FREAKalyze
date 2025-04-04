@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import threading
 import time
-from queue import Queue  # <-- NEW: We'll use this for thread-safe frame transfer
+from queue import Queue  # Thread-safe frame transfer
 
 # NAMED CONSTANTS FOR CONVERSIONS
 TRANSDUCERMINVOLTAGE = 0.5
@@ -40,12 +40,11 @@ def populate_graphs_callback():
     Parses the JSON file (selected at startup) and populates the plots with the computed data.
     Also displays the video path (the video won't actually play until unpaused).
     """
-
-    time, thrusts, pressures = read_data()
+    time_data, thrusts, pressures = read_data()
 
     # Starting points for sliders, put them 5% inwards on each side
-    slider_min = time[ (int) ( ( len(time) ) * .05 ) ]
-    slider_max = time[ (int) ( ( len(time) ) * .95 ) ]
+    slider_min = time_data[int(len(time_data) * 0.05)]
+    slider_max = time_data[int(len(time_data) * 0.95)]
 
     # Update sliding interval lines
     dpg.set_value("min_line_thrust", slider_min)
@@ -53,50 +52,46 @@ def populate_graphs_callback():
     dpg.set_value("min_line_pressure", slider_min)
     dpg.set_value("max_line_pressure", slider_max)
     
-    populate_graphs(time, thrusts, pressures)
+    populate_graphs(time_data, thrusts, pressures)
 
 
 def populate_interval_window_callback():
     """
     Called when the user clicks 'Graph selected interval".
-    Parses the JSON file (selected at startup) and populates the plots with the computed data.
-    Data will be narrowed to the data only existing within the specified interval of the JSON file.
-    Also display the video path
+    Parses the JSON file and populates the plots with data only from the specified interval.
     """
-
     trimmed_time = []
     trimmed_thrusts = []
     trimmed_pressures = []
 
-    time, thrusts, pressures = read_data()
-
+    time_data, thrusts, pressures = read_data()
 
     time_min = dpg.get_value("min_line_thrust")
     time_max = dpg.get_value("max_line_thrust")
 
     min_index = 0
     max_index = 0
-    for i, t in enumerate(time):
-        if (t <= time_min): min_index = i
-        if (t <= time_max): max_index = i
+    for i, t in enumerate(time_data):
+        if t <= time_min:
+            min_index = i
+        if t <= time_max:
+            max_index = i
 
-    # Copy everything within the interval to trimmed lists
+    # Copy data within the interval
     for i in range(min_index, max_index):
-      trimmed_time.append(time[i])
-      trimmed_thrusts.append(thrusts[i])
-      trimmed_pressures.append(pressures[i])
+        trimmed_time.append(time_data[i])
+        trimmed_thrusts.append(thrusts[i])
+        trimmed_pressures.append(pressures[i])
         
     populate_interval_window(trimmed_time, trimmed_thrusts, trimmed_pressures)
 
-def populate_graphs(time, thrusts, pressures):
+def populate_graphs(time_data, thrusts, pressures):
     """
-    Callback helper function for graph population callbacks
+    Callback helper function for graph population callbacks.
+    Calculates key stats and updates the graph series and stat labels.
     """
     # Calculate key stats/motor characteristics
-    if time:
-        burn_time = time[-1]
-    else:
-        burn_time = 0.0
+    burn_time = time_data[-1] if time_data else 0.0
 
     if thrusts:
         avg_thrust = sum(thrusts) / len(thrusts)
@@ -112,18 +107,15 @@ def populate_graphs(time, thrusts, pressures):
         avg_pressure = 0.0
         max_pressure = 0.0
 
-    if thrusts:
-        total_impulse = integrate.simpson(thrusts, x=time)
-    else:
-        total_impulse = 0.0
+    total_impulse = integrate.simpson(thrusts, x=time_data) if thrusts else 0.0
 
     motor_class = determine_motor_class(total_impulse)
 
     # Update plot series
     dpg.set_item_label("thrust_series", "Thrust Data")
     dpg.set_item_label("pressure_series", "Pressure Data")
-    dpg.set_value("thrust_series", [time, thrusts])
-    dpg.set_value("pressure_series", [time, pressures])
+    dpg.set_value("thrust_series", [time_data, thrusts])
+    dpg.set_value("pressure_series", [time_data, pressures])
     
     # Update key stats labels
     dpg.set_value("avg_thrust", " Average Thrust: " + '{0:,.2f}'.format(avg_thrust) + " N")
@@ -143,15 +135,11 @@ def populate_graphs(time, thrusts, pressures):
     # Show the video path in the UI
     dpg.set_value("video_path_label", f"Video Path: {video_file_path}")
 
-def populate_interval_window(time, thrusts, pressures):
+def populate_interval_window(time_data, thrusts, pressures):
     """
-    Callback to populate the interval selection window with interval values
+    Callback to populate the interval selection window with interval values.
     """
-    # Calculate key stats/motor characteristics
-    if time:
-        burn_time = time[-1]
-    else:
-        burn_time = 0.0
+    burn_time = time_data[-1] if time_data else 0.0
 
     if thrusts:
         avg_thrust = sum(thrusts) / len(thrusts)
@@ -167,20 +155,11 @@ def populate_interval_window(time, thrusts, pressures):
         avg_pressure = 0.0
         max_pressure = 0.0
 
-    if thrusts:
-        total_impulse = integrate.simpson(thrusts, x=time)
-    else:
-        total_impulse = 0.0
+    total_impulse = integrate.simpson(thrusts, x=time_data) if thrusts else 0.0
 
     motor_class = determine_motor_class(total_impulse)
 
-    # Update plot series, uncomment to scope graphs to interval window
-    # dpg.set_item_label("thrust_series", "Thrust Data")
-    # dpg.set_item_label("pressure_series", "Pressure Data")
-    # dpg.set_value("thrust_series", [time, thrusts])
-    # dpg.set_value("pressure_series", [time, pressures])
-    
-    # Update key stats labels
+    # Update interval-specific key stats labels
     dpg.set_value("avg_thrust_interval", " Average Thrust: " + '{0:,.2f}'.format(avg_thrust) + " N")
     dpg.set_value("max_thrust_interval", " Max Thrust: " + '{0:,.2f}'.format(max_thrust) + " N")
     dpg.set_value("avg_pressure_interval", " Average Pressure: " + '{0:,.2f}'.format(avg_pressure) + " PSI")
@@ -190,16 +169,15 @@ def populate_interval_window(time, thrusts, pressures):
     dpg.set_value("motor_desig_interval", " Motor Designation: " + motor_class + '{0:.0f}'.format(avg_thrust))
 
 
-
 def thrust_line_callback():
     """
     Called when the user updates the graph interval for thrust.
     """
-    min = dpg.get_value("min_line_thrust")
-    max = dpg.get_value("max_line_thrust")
+    min_val = dpg.get_value("min_line_thrust")
+    max_val = dpg.get_value("max_line_thrust")
 
-    dpg.set_value("min_line_pressure", min)
-    dpg.set_value("max_line_pressure", max)
+    dpg.set_value("min_line_pressure", min_val)
+    dpg.set_value("max_line_pressure", max_val)
 
     # Update interval stats
     populate_interval_window_callback()
@@ -209,11 +187,11 @@ def pressure_line_callback():
     """
     Called when the user updates the graph interval for pressure.
     """
-    min = dpg.get_value("min_line_pressure")
-    max = dpg.get_value("max_line_pressure")
+    min_val = dpg.get_value("min_line_pressure")
+    max_val = dpg.get_value("max_line_pressure")
 
-    dpg.set_value("min_line_thrust", min)
-    dpg.set_value("max_line_thrust", max)
+    dpg.set_value("min_line_thrust", min_val)
+    dpg.set_value("max_line_thrust", max_val)
 
     # Update interval stats
     populate_interval_window_callback()
@@ -309,8 +287,8 @@ def video_loop():
 
         # Convert BGR -> RGBA
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGBA)
-        # Resize to (640, 480)
-        frame = cv2.resize(frame, (640, 480))
+        # Resize to (800, 600) for a larger display
+        frame = cv2.resize(frame, (800, 600))
         frame = frame.astype(np.float32) / 255.0
         frame_data = frame.flatten().tolist()
 
@@ -333,9 +311,10 @@ def video_loop():
 
 def build_ui():
     with dpg.group():
-        # Button to populate the graphs
-        dpg.add_button(label="Populate Graphs and Load Camera Feed", callback=populate_graphs_callback)
-
+        # Top-level button with extra width and padding
+        dpg.add_button(label="Populate Graphs and Load Camera Feed", callback=populate_graphs_callback, width=250)
+        dpg.add_spacer(height=10)
+        
         # Plots section
         with dpg.child_window(width=-1, height=350):
             # Thrust Plot
@@ -344,7 +323,7 @@ def build_ui():
                 with dpg.plot_axis(dpg.mvYAxis, label="Thrust (N)", tag="y_axis_thrust"):
                     dpg.add_line_series([], [], label="Thrust Data", tag="thrust_series")
                 dpg.add_drag_line(label="min", color=[0, 255, 0, 255], tag="min_line_thrust", callback=thrust_line_callback)
-                dpg.add_drag_line(label="max", color=[255, 0, 0, 255],  tag="max_line_thrust", callback=thrust_line_callback)
+                dpg.add_drag_line(label="max", color=[255, 0, 0, 255], tag="max_line_thrust", callback=thrust_line_callback)
 
             # Pressure Plot
             with dpg.plot(label="Pressure Data", height=160, width=-1, tag="pressure_plot"):
@@ -352,48 +331,59 @@ def build_ui():
                 with dpg.plot_axis(dpg.mvYAxis, label="Pressure (PSI)", tag="y_axis_pressure"):
                     dpg.add_line_series([], [], label="Pressure Data", tag="pressure_series")
                 dpg.add_drag_line(label="min", color=[0, 255, 0, 255], tag="min_line_pressure", callback=pressure_line_callback)
-                dpg.add_drag_line(label="max", color=[255, 0, 0, 255],  tag="max_line_pressure", callback=pressure_line_callback)
-
-        dpg.add_button(label="Restore graphs", callback=populate_graphs_callback)
+                dpg.add_drag_line(label="max", color=[255, 0, 0, 255], tag="max_line_pressure", callback=pressure_line_callback)
+                
+        dpg.add_button(label="Restore graphs", callback=populate_graphs_callback, width=200)
+        dpg.add_spacer(height=15)
         
-        # Key stats base data section
-        dpg.add_text("Overall dataset characteristics", color=(255, 140, 0))
-        with dpg.child_window(width=-1, height=180):
-            dpg.add_text(" Average Thrust:  N", tag="avg_thrust", color=(0, 255, 255))
-            dpg.add_text(" Max Thrust:  N", tag="max_thrust", color=(255, 200, 200))
-            dpg.add_text(" Average Pressure:  PSI", tag="avg_pressure", color=(200, 255, 200))
-            dpg.add_text(" Max Pressure:  PSI", tag="max_pressure", color=(255, 255, 0))
-            dpg.add_text(" Burn Time:  s", tag="burn_time", color=(255, 165, 0))
-            dpg.add_text(" Total Impulse:  Ns", tag="total_impulse", color=(255, 105, 180))
-            dpg.add_text(" Motor Designation: ", tag="motor_desig", color=(100, 200, 255))
-
-        # Key stats interval section
-        dpg.add_text("Interval-specific dataset characteristics", color=(255, 140, 0))
-        with dpg.child_window(width=-1, height=180):
-            dpg.add_text(" Average Thrust:  N", tag="avg_thrust_interval", color=(0, 255, 255))
-            dpg.add_text(" Max Thrust:  N", tag="max_thrust_interval", color=(255, 200, 200))
-            dpg.add_text(" Average Pressure:  PSI", tag="avg_pressure_interval", color=(200, 255, 200))
-            dpg.add_text(" Max Pressure:  PSI", tag="max_pressure_interval", color=(255, 255, 0))
-            dpg.add_text(" Burn Time:  s", tag="burn_time_interval", color=(255, 165, 0))
-            dpg.add_text(" Total Impulse:  Ns", tag="total_impulse_interval", color=(255, 105, 180))
-            dpg.add_text(" Motor Designation: ", tag="motor_desig_interval", color=(100, 200, 255))
-        
-        dpg.add_spacer(height=10)
+        # Key Stats Sections: Overall and Interval-specific side by side
+        with dpg.group(horizontal=True):
+            with dpg.child_window(width=600, height=250, border=True):
+                dpg.add_text("Overall dataset characteristics", color=(255, 140, 0))
+                dpg.add_spacer(height=5)
+                dpg.add_text(" Average Thrust:  N", tag="avg_thrust", color=(0, 255, 255))
+                dpg.add_text(" Max Thrust:  N", tag="max_thrust", color=(255, 200, 200))
+                dpg.add_text(" Average Pressure:  PSI", tag="avg_pressure", color=(200, 255, 200))
+                dpg.add_text(" Max Pressure:  PSI", tag="max_pressure", color=(255, 255, 0))
+                dpg.add_text(" Burn Time:  s", tag="burn_time", color=(255, 165, 0))
+                dpg.add_text(" Total Impulse:  Ns", tag="total_impulse", color=(255, 105, 180))
+                dpg.add_text(" Motor Designation: ", tag="motor_desig", color=(100, 200, 255))
+            with dpg.child_window(width=600, height=250, border=True):
+                dpg.add_text("Interval-specific dataset characteristics", color=(255, 140, 0))
+                dpg.add_spacer(height=5)
+                dpg.add_text(" Average Thrust:  N", tag="avg_thrust_interval", color=(0, 255, 255))
+                dpg.add_text(" Max Thrust:  N", tag="max_thrust_interval", color=(255, 200, 200))
+                dpg.add_text(" Average Pressure:  PSI", tag="avg_pressure_interval", color=(200, 255, 200))
+                dpg.add_text(" Max Pressure:  PSI", tag="max_pressure_interval", color=(255, 255, 0))
+                dpg.add_text(" Burn Time:  s", tag="burn_time_interval", color=(255, 165, 0))
+                dpg.add_text(" Total Impulse:  Ns", tag="total_impulse_interval", color=(255, 105, 180))
+                dpg.add_text(" Motor Designation: ", tag="motor_desig_interval", color=(100, 200, 255))
+                
+        dpg.add_spacer(height=15)
         dpg.add_separator()
-        dpg.add_text(" Rocket Test Video", color=(255, 140, 0))
-
-        with dpg.child_window(width=-1, height=200):
-            dpg.add_text("Video Path: ", tag="video_path_label", color=(255,255,0))
+        dpg.add_spacer(height=10)
+        
+        # Video Section with improved layout
+        dpg.add_text("Rocket Test Video", color=(255, 140, 0), bullet=True)
+        # Video control button moved to the top of the video section
+        dpg.add_button(label="Play/Pause Video", callback=play_video_callback, width=200)
+        dpg.add_spacer(height=5)
+        dpg.add_text("Video Path: ", tag="video_path_label", color=(255, 255, 0))
+        dpg.add_spacer(height=5)
+        # Enlarged video window with a border; updated to 800x600 display
+        with dpg.child_window(width=-1, height=600, border=True):
             dpg.add_image("video_texture")
-            dpg.add_button(label="Play/Pause Video", callback=play_video_callback, width=200)
-            dpg.add_text("", tag="video_status")
-
+        dpg.add_spacer(height=5)
+        dpg.add_text("", tag="video_status")
+    
+    # Menu Bar at the top
     with dpg.menu_bar():
         dpg.add_menu_item(label="About")
         dpg.add_menu_item(label="Help")
         dpg.add_menu_item(label="Exit", callback=exit_callback)
-
-    dpg.add_text("FreakAlyze")
+    
+    dpg.add_spacer(height=10)
+    dpg.add_text("FreakAlyze", color=(200, 200, 200))
     dpg.add_spacer(height=5)
 
 # ------------------------------------------------------------------------
@@ -449,7 +439,7 @@ def read_data():
 
     loads = []
     pressures = []
-    time = []
+    time_data = []
 
     # Convert load cell data into Newtons
     for lv in data['load_cell_voltages_mv']:
@@ -465,9 +455,9 @@ def read_data():
         pressures.append(pressure)
 
     for ts in data['time_values_seconds']:
-       time.append(ts)
+       time_data.append(ts)
 
-    return (time, loads, pressures)
+    return (time_data, loads, pressures)
 
 
 def find_files_in_directory(dir_path):
@@ -504,6 +494,9 @@ def find_files_in_directory(dir_path):
 
     return found_json, found_mp4
 
+# ------------------------------------------------------------------------
+# MAIN APPLICATION SETUP
+# ------------------------------------------------------------------------
 
 if __name__ == "__main__":
     # Prompt for directory selection using Tkinter before launching the GUI
@@ -525,10 +518,26 @@ if __name__ == "__main__":
 
     # Setup and launch the Dear PyGui application
     dpg.create_context()
+    
+    # ------------------ CUSTOM THEME ------------------
+    with dpg.theme() as my_theme:
+        with dpg.theme_component(dpg.mvAll):
+            dpg.add_theme_color(dpg.mvThemeCol_WindowBg, [30, 30, 30, 255])      # Dark window background
+            dpg.add_theme_color(dpg.mvThemeCol_ChildBg, [45, 45, 45, 255])       # Child window background
+            dpg.add_theme_color(dpg.mvThemeCol_Button, [70, 130, 180, 255])      # Steel blue buttons
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonHovered, [90, 150, 200, 255])
+            dpg.add_theme_color(dpg.mvThemeCol_ButtonActive, [50, 110, 160, 255])
+            dpg.add_theme_color(dpg.mvThemeCol_Text, [220, 220, 220, 255])         # Light text color
+            dpg.add_theme_style(dpg.mvStyleVar_WindowRounding, 10)               # Rounded window corners
+            dpg.add_theme_style(dpg.mvStyleVar_FrameRounding, 5)                 # Rounded child frames
+            dpg.add_theme_style(dpg.mvStyleVar_ItemSpacing, 8, 8)                # Spacing between items
+    dpg.bind_theme(my_theme)
+    # ----------------------------------------------------
+
     with dpg.texture_registry():
-        # Create a dynamic texture for the video frames (640x480, RGBA)
-        default_texture_data = [0.0] * (640 * 480 * 4)
-        dpg.add_dynamic_texture(640, 480, default_texture_data, tag="video_texture")
+        # Create a dynamic texture for the video frames (800x600, RGBA)
+        default_texture_data = [0.0] * (800 * 600 * 4)
+        dpg.add_dynamic_texture(800, 600, default_texture_data, tag="video_texture")
 
     dpg.create_viewport(title="FreakAlyze", width=1000, height=700, resizable=True)
     dpg.setup_dearpygui()
