@@ -275,6 +275,8 @@ def video_loop():
                 fps = probe_fps
     frame_duration = 1.0 / fps
 
+    i = 0
+
     while True:
         with video_lock:
             if not video_playing or not video_capture:
@@ -295,6 +297,7 @@ def video_loop():
         # Push frame data into the queue
         frame_queue.put(frame_data)
 
+        shift_video_line(frame_duration)
         time.sleep(frame_duration)
 
     # Once done, stop playback
@@ -304,6 +307,17 @@ def video_loop():
             video_capture.release()
             video_capture = None
     video_status = "Video playback ended."
+
+
+def shift_video_line(shift):
+    """
+    Invoked when the line for video playback should be moved
+    """
+    curr = dpg.get_value("time_line_thrust")
+    curr += shift
+
+    dpg.set_value("time_line_thrust", curr)
+    dpg.set_value("time_line_pressure", curr)
 
 # ------------------------------------------------------------------------
 # UI BUILDING
@@ -324,6 +338,7 @@ def build_ui():
                     dpg.add_line_series([], [], label="Thrust Data", tag="thrust_series")
                 dpg.add_drag_line(label="min", color=[0, 255, 0, 255], tag="min_line_thrust", callback=thrust_line_callback)
                 dpg.add_drag_line(label="max", color=[255, 0, 0, 255], tag="max_line_thrust", callback=thrust_line_callback)
+                dpg.add_drag_line(label="video", color=[0, 0, 0, 255], tag="time_line_thrust")
 
             # Pressure Plot
             with dpg.plot(label="Pressure Data", height=160, width=-1, tag="pressure_plot"):
@@ -332,6 +347,7 @@ def build_ui():
                     dpg.add_line_series([], [], label="Pressure Data", tag="pressure_series")
                 dpg.add_drag_line(label="min", color=[0, 255, 0, 255], tag="min_line_pressure", callback=pressure_line_callback)
                 dpg.add_drag_line(label="max", color=[255, 0, 0, 255], tag="max_line_pressure", callback=pressure_line_callback)
+                dpg.add_drag_line(label="video", color=[0, 0, 0, 255], tag="time_line_pressure")
                 
         dpg.add_button(label="Restore graphs", callback=populate_graphs_callback, width=200)
         dpg.add_spacer(height=15)
