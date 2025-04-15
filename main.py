@@ -259,6 +259,8 @@ def play_video_callback(sender, app_data):
         video_playing = True
 
     video_status = "Playing video..."
+    dpg.set_value("time_line_thrust", 0)
+    dpg.set_value("time_line_pressure", 0)
     threading.Thread(target=video_loop, daemon=True).start()
 
 def video_loop():
@@ -306,8 +308,6 @@ def video_loop():
         if video_capture:
             video_capture.release()
             video_capture = None
-            dpg.set_value("time_line_thrust", 0)
-            dpg.set_value("time_line_pressure", 0)
     video_status = "Video playback ended."
 
 
