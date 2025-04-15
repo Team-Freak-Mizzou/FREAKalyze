@@ -306,6 +306,8 @@ def video_loop():
         if video_capture:
             video_capture.release()
             video_capture = None
+            dpg.set_value("time_line_thrust", 0)
+            dpg.set_value("time_line_pressure", 0)
     video_status = "Video playback ended."
 
 
@@ -338,7 +340,7 @@ def build_ui():
                     dpg.add_line_series([], [], label="Thrust Data", tag="thrust_series")
                 dpg.add_drag_line(label="min", color=[0, 255, 0, 255], tag="min_line_thrust", callback=thrust_line_callback)
                 dpg.add_drag_line(label="max", color=[255, 0, 0, 255], tag="max_line_thrust", callback=thrust_line_callback)
-                dpg.add_drag_line(label="video", color=[0, 0, 0, 255], tag="time_line_thrust")
+                dpg.add_drag_line(label="video", color=[0, 0, 0, 255], tag="time_line_thrust", default_value=0)
 
             # Pressure Plot
             with dpg.plot(label="Pressure Data", height=160, width=-1, tag="pressure_plot"):
@@ -347,7 +349,7 @@ def build_ui():
                     dpg.add_line_series([], [], label="Pressure Data", tag="pressure_series")
                 dpg.add_drag_line(label="min", color=[0, 255, 0, 255], tag="min_line_pressure", callback=pressure_line_callback)
                 dpg.add_drag_line(label="max", color=[255, 0, 0, 255], tag="max_line_pressure", callback=pressure_line_callback)
-                dpg.add_drag_line(label="video", color=[0, 0, 0, 255], tag="time_line_pressure")
+                dpg.add_drag_line(label="video", color=[0, 0, 0, 255], tag="time_line_pressure", default_value=0)
                 
         dpg.add_button(label="Restore graphs", callback=populate_graphs_callback, width=200)
         dpg.add_spacer(height=15)
