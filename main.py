@@ -1,5 +1,6 @@
 import os
 import json
+import sys # for shutdown
 import dearpygui.dearpygui as dpg
 from scipy import integrate
 import cv2
@@ -66,8 +67,18 @@ def populate_interval_window_callback():
 
     time_data, thrusts, pressures = read_data()
 
-    time_min = dpg.get_value("min_line_thrust")
-    time_max = dpg.get_value("max_line_thrust")
+    if thrusts:
+        time_min = dpg.get_value("min_line_thrust")
+        time_max = dpg.get_value("max_line_thrust")
+    elif pressures:
+        time_min = dpg.get_value("min_line_pressure")
+        time_max = dpg.get_value("max_line_pressure")
+    else:
+        messagebox.showerror(
+            "Alert",
+            "No data to be plotted"
+        )
+        return time_data, thrusts, pressures
 
     min_index = 0
     max_index = 0
@@ -79,9 +90,9 @@ def populate_interval_window_callback():
 
     # Copy data within the interval
     for i in range(min_index, max_index):
-        trimmed_time.append(time_data[i])
-        trimmed_thrusts.append(thrusts[i])
-        trimmed_pressures.append(pressures[i])
+        if time_data: trimmed_time.append(time_data[i])
+        if thrusts: trimmed_thrusts.append(thrusts[i])
+        if pressures: trimmed_pressures.append(pressures[i])
         
     populate_interval_window(trimmed_time, trimmed_thrusts, trimmed_pressures)
 
@@ -106,16 +117,18 @@ def populate_graphs(time_data, thrusts, pressures):
     else:
         avg_pressure = 0.0
         max_pressure = 0.0
-
+    
     total_impulse = integrate.simpson(thrusts, x=time_data) if thrusts else 0.0
 
     motor_class = determine_motor_class(total_impulse)
 
     # Update plot series
-    dpg.set_item_label("thrust_series", "Thrust Data")
-    dpg.set_item_label("pressure_series", "Pressure Data")
-    dpg.set_value("thrust_series", [time_data, thrusts])
-    dpg.set_value("pressure_series", [time_data, pressures])
+    if pressures:
+        dpg.set_item_label("pressure_series", "Pressure Data")
+        dpg.set_value("pressure_series", [time_data, pressures])
+    if thrusts:
+        dpg.set_item_label("thrust_series", "Thrust Data")
+        dpg.set_value("thrust_series", [time_data, thrusts])
     
     # Update key stats labels
     dpg.set_value("avg_thrust", " Average Thrust: " + '{0:,.2f}'.format(avg_thrust) + " N")
@@ -127,10 +140,12 @@ def populate_graphs(time_data, thrusts, pressures):
     dpg.set_value("motor_desig", " Motor Designation: " + motor_class + '{0:.0f}'.format(avg_thrust))
 
     # Adjust plot axes to fit the new data
-    dpg.fit_axis_data("y_axis_thrust")
-    dpg.fit_axis_data("y_axis_pressure")
-    dpg.fit_axis_data("x_axis_thrust")
-    dpg.fit_axis_data("x_axis_pressure")
+    if pressures:
+        dpg.fit_axis_data("x_axis_pressure")
+        dpg.fit_axis_data("y_axis_pressure")
+    if thrusts:
+        dpg.fit_axis_data("y_axis_thrust")
+        dpg.fit_axis_data("x_axis_thrust")
 
     # Show the video path in the UI
     dpg.set_value("video_path_label", f"Video Path: {video_file_path}")
@@ -443,6 +458,18 @@ def determine_motor_class(impulse):
         return 'P'
     return ""
 
+def trim_to_smallest_nonempty(*lists):
+    # Filter out empty lists
+    non_empty_lists = [lst for lst in lists if lst]
+    if not non_empty_lists:
+        return [[] for _ in lists]  # All lists are empty
+
+    # Find the minimum length among non-empty lists
+    min_len = min(len(lst) for lst in non_empty_lists)
+
+    # Trim all lists to that length
+    return [lst[:min_len] for lst in lists]
+
 def read_data():
     """
     Parses the JSON file (specified by file_path) for graphing,
@@ -452,30 +479,52 @@ def read_data():
     if not file_path or not os.path.isfile(file_path):
         return [], [], []
 
-    with open(file_path, 'r') as f:
-        data = json.load(f)
+    try:
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+    except:
+        messagebox.showerror(
+            "Alert",
+            "Unable to read .json data file. Please verify that all fields are formatted correctly."
+        )
+        return [], [], []
 
     loads = []
     pressures = []
     time_data = []
 
     # Convert load cell data into Newtons
-    for lv in data['load_cell_voltages_mv']:
-        loadAdjVoltage = (lv - 1.25) / 201
-        calibratedLoad = 100387.5 * loadAdjVoltage - 3.8069375
-        calibratedLoad = calibratedLoad * 9.81
-        loads.append(calibratedLoad)
+    try:
+        for lv in data['load_cell_voltages_mv']:
+            loadAdjVoltage = (lv - 1.25) / 201
+            calibratedLoad = 100387.5 * loadAdjVoltage - 3.8069375
+            calibratedLoad = calibratedLoad * 9.81
+            loads.append(calibratedLoad)
+    except:
+        print("Invalid load cell values")
 
     # Convert transducer data into PSI
-    for pv in data['pressure_transducer_voltages_v']:
-        pressAdjVoltage = pv - TRANSDUCERMINVOLTAGE
-        pressure = pressAdjVoltage * TRANSDUCERSCALINGFACTOR
-        pressures.append(pressure)
+    try:
+        for pv in data['pressure_transducer_voltages_v']:
+            pressAdjVoltage = pv - TRANSDUCERMINVOLTAGE
+            pressure = pressAdjVoltage * TRANSDUCERSCALINGFACTOR
+            pressures.append(pressure)
+    except:
+        print("Invalid pressure values")
 
-    for ts in data['time_values_seconds']:
-       time_data.append(ts)
+    try:
+        for ts in data['time_values_seconds']:
+            time_data.append(ts)
+    except:
+        messagebox.showerror(
+            "Alert",
+            "Invalid timestamp values. Exiting."
+        )
+        sys.exit(1) # Not working?
 
-    return (time_data, loads, pressures)
+    time_data_tr, loads_tr, pressures_tr = trim_to_smallest_nonempty(time_data, loads, pressures)
+
+    return (time_data_tr, loads_tr, pressures_tr)
 
 
 def find_files_in_directory(dir_path):
