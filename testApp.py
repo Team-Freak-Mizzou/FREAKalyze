@@ -50,7 +50,7 @@ class TestApp(unittest.TestCase):
         dpg.set_item_label = dummy_set_item_label
         dpg.fit_axis_data = dummy_fit_axis_data
 
-        # Clear our dummy dictionaries
+        # Clear out dummy dictionaries
         captured_values.clear()
         captured_labels.clear()
 
