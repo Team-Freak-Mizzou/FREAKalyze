@@ -502,6 +502,7 @@ if __name__ == "__main__":
     # Prompt for directory selection using Tkinter before launching the GUI
     import tkinter as tk
     from tkinter import filedialog
+    from tkinter import messagebox
 
     root = tk.Tk()
     root.withdraw()
@@ -515,6 +516,25 @@ if __name__ == "__main__":
             file_path = json_file
         if mp4_file:
             video_file_path = mp4_file
+
+    if not json_file and not mp4_file:
+        messagebox.showerror(
+            "Alert",
+            "Missing Files: Startup folder must contain both a .json and an .mp4.  Exiting."
+        )
+        sys.exit(1)
+    
+    if not json_file:
+        messagebox.showerror(
+            "Alert",
+            "Missing JSON: You can continue, but graphing is not available"
+        )
+
+    if not mp4_file:
+        messagebox.showerror(
+            "Alert",
+            "Missing MP4: You can continue, but video playback is not available"
+        )
 
     # Setup and launch the Dear PyGui application
     dpg.create_context()
