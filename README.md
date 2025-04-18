@@ -21,3 +21,7 @@ To run FREAKalyze, run `python main.py` inside of the FREAKalyze folder. A windo
 Select the folder that contains the output data from Project FREAK.
 
 To load your data, click the button at the top that says "Populate Graphs and Load Camera Feed". 
+
+## Known issues
+
+There is a known issue where FREAKalyze will crash when Mac users with M series chips click on the refresh button.
