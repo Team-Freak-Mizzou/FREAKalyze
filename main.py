@@ -20,6 +20,7 @@ video_file_path = ''
 video_file = ''  
 video_playing = False
 video_capture = None
+dir_path = ""
 
 # A lock to synchronize access to the capture object
 video_lock = threading.Lock()
@@ -398,6 +399,7 @@ def build_ui():
     with dpg.menu_bar():
         dpg.add_menu_item(label="About")
         dpg.add_menu_item(label="Help")
+        dpg.add_menu_item(label="Choose new folder", callback=open_folder_dialogue)
         dpg.add_menu_item(label="Exit", callback=exit_callback)
     
     dpg.add_spacer(height=10)
@@ -512,6 +514,27 @@ def find_files_in_directory(dir_path):
 
     return found_json, found_mp4
 
+def open_folder_dialogue():
+    import tkinter as tk
+    from tkinter import filedialog
+
+    root = tk.Tk()
+    root.withdraw()
+    dir_path = filedialog.askdirectory(title="Select a Directory Containing JSON & MP4")
+    root.destroy()
+
+    # If the user selected a directory, find the .json and .mp4
+    if dir_path == "":
+        exit()
+    else:
+        json_file, mp4_file = find_files_in_directory(dir_path)
+        if json_file:
+            global file_path
+            file_path = json_file
+        if mp4_file:
+            global video_file_path
+            video_file_path = mp4_file
+
 # ------------------------------------------------------------------------
 # MAIN APPLICATION SETUP
 # ------------------------------------------------------------------------
@@ -528,7 +551,9 @@ if __name__ == "__main__":
     root.destroy()
 
     # If the user selected a directory, find the .json and .mp4
-    if dir_path:
+    if dir_path == "":
+        exit()
+    else:
         json_file, mp4_file = find_files_in_directory(dir_path)
         if json_file:
             file_path = json_file
