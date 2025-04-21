@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import threading
 import time
+import webbrowser
 from queue import Queue  # Thread-safe frame transfer
 
 # NAMED CONSTANTS FOR CONVERSIONS
@@ -222,6 +223,10 @@ def exit_callback():
             video_capture = None
     dpg.stop_dearpygui()
 
+#this will take you to our github if you press the "help" button
+def help_callback(sender, app_data, user_data):
+    webbrowser.open("https://github.com/Team-Freak-Mizzou/FREAKalyze")
+
 def resize_callback(sender, app_data, user_data):
     """
     Adjust UI elements dynamically when the viewport is resized.
@@ -412,8 +417,7 @@ def build_ui():
     
     # Menu Bar at the top
     with dpg.menu_bar():
-        dpg.add_menu_item(label="About")
-        dpg.add_menu_item(label="Help")
+        dpg.add_menu_item(label="Help", callback=help_callback)
         dpg.add_menu_item(label="Choose new folder", callback=open_folder_dialogue)
         dpg.add_menu_item(label="Exit", callback=exit_callback)
     
